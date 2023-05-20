@@ -20,7 +20,7 @@ studentid=0
 
 projectlist='2023-2024 / SEM-I' #project list for which data will be fetched. Entire history is sent by the server thus has to be filtered
 
-searchword=['El'] #Domains identified by two letter wild card here inside the list. 
+searchword=['El','IT'] #Domains identified by two letter wild card here inside the list. 
 #El=Electronics 
 #Co=Computer Science
 #IT
