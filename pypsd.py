@@ -242,12 +242,12 @@ for i in range(len(fetchlist)):
     for j in range(len(fetchlist[i])):
         fetchlist[i][j].append(j)
         valid=False
-        if(len(branchfilter)>1 and len(fetchlist[i][j][-5].strip()>1)):
+        if(len(branchfilter)>1):
             if(len(fetchlist[i][j])>1):
                 count=len([*re.finditer('any',fetchlist[i][j][-5],re.IGNORECASE)])-len([*re.finditer('anya',fetchlist[i][j][-5],re.IGNORECASE)])-len([*re.finditer('anyb',fetchlist[i][j][-5],re.IGNORECASE)])-len([*re.finditer('anyc',fetchlist[i][j][-5],re.IGNORECASE)])
                 if(re.search(branchfilter,fetchlist[i][j][-5],re.IGNORECASE)):
                     valid=True
-                elif(count>0):
+                elif(count>0 or len(fetchlist[i][j][-5].strip())<2):
                     valid=True
                 elif(re.search(f'any{branchfilter}',fetchlist[i][j][-5],re.IGNORECASE)):
                     valid=True
@@ -358,7 +358,7 @@ for i in range(len(jsonout)):
         for k in range(len(pbout)):
             valid=False
             totalinterns=totalinterns+int(pbout[k][1])
-            if(len(branchfilter)>1 and len(pbout[k][-3].strip()>1)):
+            if(len(branchfilter)>1 and len(pbout[k][-3].strip())>1):
                 count=len([*re.finditer('any',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anya',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyb',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyc',pbout[k][-3],re.IGNORECASE)])
                 if(re.search(branchfilter,pbout[k][-3],re.IGNORECASE)):
                     valid=True
