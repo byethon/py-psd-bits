@@ -16,7 +16,7 @@ Run pyhton pypsd.py to launch the script.
 
 # Example Output
 The output from the script will appear on the console as well as a HTML file named Station list.html in the base directory of the script.    
-![console](./images/console.png)
+![console](./images/Console.png)
 Console output    
 ![html](./images/html.png)
 HTML output    
