@@ -12,7 +12,7 @@ from platform import platform
 psdemail=''
 psdpass=''
 
-branchfilter='A1' #branch that must be included in consolidated projects
+branchfilter='A3' #branch that must be included in consolidated projects
 #only single branch input supported
 #leave empty to skip branch filtering
 
@@ -20,7 +20,7 @@ studentid=0
 
 projectlist='2023-2024 / SEM-I' #project list for which data will be fetched. Entire history is sent by the server thus has to be filtered
 
-searchword=['El','IT'] #Domains identified by two letter wild card here inside the list. 
+searchword=['El'] #Domains identified by two letter wild card here inside the list. 
 #El=Electronics 
 #Co=Computer Science
 #IT
@@ -34,7 +34,7 @@ scholarship=0 #Lower limit for Scholarship Amount
 
 stripendlimitpg=0 #Lower limit for stripend (Higher Degree)
 
-ignore_details=True #Ignores project briefing and provides a tabular output
+ignore_details=False #Ignores project briefing and provides a tabular output
 
 if (platform()[0:7]=="Windows"):
     import ctypes
@@ -253,7 +253,7 @@ for i in range(len(fetchlist)):
                     valid=True
         else:
             valid=True
-        if(len(fetchlist[i][j])<2 or int(fetchlist[i][j][-2])<stripendlimitpg or int(fetchlist[i][j][-3])<scholarship or int(fetchlist[i][j][-4])<stripendlimit or fetchlist[i][j][1]!=projectlist or not valid):
+        if(len(fetchlist[i][j])<2 or int(fetchlist[i][j][-2])<stripendlimitpg or int(fetchlist[i][j][-3])<scholarship or int(fetchlist[i][j][-4])<stripendlimit or (fetchlist[i][j][1]!=projectlist and j) or not valid):
             if(len(fetchlist[i][j])<2):
                 print(f"{bcolors.INFOYELLOW}>{bcolors.ENDC}No Fetch File? Check Debug Output")
                 f.write(str(jsonout[i]))
@@ -316,6 +316,7 @@ if(ignore_details):
     file_html.write('''<table>
     <tr>
     <th>Station</th>
+    <th>Latest Problem Bank</th>
     <th>Eligibility</th>
     <th>Total Req. Interns</th>
     <th>Stripend</th>
@@ -378,7 +379,12 @@ for i in range(len(jsonout)):
             file_html.write(f'''<h2 style="color:#e8e6e3;">{htmlstring}</h2></ul>''')
             file_html.write('''</div>''')
         else:
-            file_html.write(f'''<td>{fetchlist[i][j][-6]}</td>
+            if(fetchlist[i][j][1]!=projectlist):
+                set_color='red'
+            else:
+                set_color='blue'
+            file_html.write(f'''<td><span style="color: {set_color}">{fetchlist[i][j][1]}</span></td>
+            <td>{fetchlist[i][j][-6]}</td>
             <td><span style="color: lime">{totalinterns}</span></td>
             <td><span style="color: #337dff">{fetchlist[i][j][-5]}</span></td>
             <td><a href={uri} target="_blank" style="color:orange;">View Details</a></td>
