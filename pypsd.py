@@ -34,7 +34,7 @@ scholarship=0 #Lower limit for Scholarship Amount
 
 stripendlimitpg=0 #Lower limit for stripend (Higher Degree)
 
-ignore_details=False #Ignores project briefing and provides a tabular output
+ignore_details=True #Ignores project briefing and provides a tabular output
 
 if (platform()[0:7]=="Windows"):
     import ctypes
