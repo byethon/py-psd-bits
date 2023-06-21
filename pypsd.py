@@ -1,4 +1,5 @@
 from sys import exit
+import time
 try:
     import requests
 except:
@@ -12,7 +13,7 @@ from platform import platform
 psdemail=''
 psdpass=''
 
-branchfilter='A3' #branch that must be included in consolidated projects
+branchfilter='' #branch that must be included in consolidated projects
 #only single branch input supported
 #leave empty to skip branch filtering
 
@@ -20,7 +21,7 @@ studentid=0
 
 projectlist='2023-2024 / SEM-I' #project list for which data will be fetched. Entire history is sent by the server thus has to be filtered
 
-searchword=['El'] #Domains identified by two letter wild card here inside the list. 
+searchword=[] #Domains identified by two letter wild card here inside the list. 
 #El=Electronics 
 #Co=Computer Science
 #IT
@@ -36,6 +37,8 @@ stripendlimitpg=0 #Lower limit for stripend (Higher Degree)
 
 ignore_details=True #Ignores project briefing and provides a tabular output
 
+searchword.append('-')
+
 if (platform()[0:7]=="Windows"):
     import ctypes
     kernel32 = ctypes.windll.kernel32
@@ -50,7 +53,12 @@ class bcolors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
-file_html = open("Station list.html", "w")
+if(ignore_details):
+    fname="Station_list.html"
+else:
+    fname="Station_brief.html"
+
+file_html = open(fname, "w")
 
 if(ignore_details):
     file_html.write('''<!DOCTYPE html>
@@ -82,6 +90,14 @@ def link(uri, label=None):
     escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
 
     return escape_mask.format(parameters, uri, label)
+
+def token_gen():
+    curr_millis=int(time.time()*1000)
+    epochTicks = 621355968000000000
+    ticksPerMillisecond = 10000
+    token= epochTicks + (curr_millis * ticksPerMillisecond)
+    return int(token)
+
 
 f=open('debug','w')
 
@@ -169,20 +185,59 @@ print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Getting Dashboard...")
 get_req=ps.get(resp_url2)
 print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Getting Station List....")
 post_req=ps.post(resp_url2+'/getinfoStation',headers=headers,json=payload2)
-jsonout=post_req.text[8:-4]
-jsonout=jsonout.split('},{')
-for i in range(len(jsonout)):
-    jsonout[i]=re.sub('\\\\"','',jsonout[i])
-    jsonout[i]=re.sub('\\\\\\\\u0026','&',jsonout[i])
-    jsonout[i]=jsonout[i].split(',')
-    temp=[]
-    for subentry in jsonout[i]:
-        temprep=subentry.split(':',1)
-        if len(temprep)>1:
-            temp.append(temprep[1].rstrip())
-        else:
-            temp[-1]=temp[-1]+','+subentry.rstrip()
-    jsonout[i]=temp
+
+if(post_req.status_code==404):
+    print(f"{bcolors.FAIL}ERROR access Station Preference list{bcolors.ENDC}")
+    print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Fallback to problem bank scraping....")
+    print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Getting Station List....")
+    payload_bak={'batchid': "undefined",
+                'token': str(token_gen)}
+
+    headers.update({'Referer': station_fetch})
+    post_req=ps.post(station_fetch+'/getPBdetail',headers=headers,json=payload_bak)
+
+    jsonout=post_req.text[8:-4]
+    jsonout=jsonout.split('},{')
+    for i in range(len(jsonout)):
+        jsonout[i]=re.sub('\\\\"','',jsonout[i])
+        jsonout[i]=re.sub('\\\\\\\\u0026','&',jsonout[i])
+        jsonout[i]=jsonout[i].split(',')
+        temp=[]
+        for subentry in jsonout[i]:
+            temprep=subentry.split(':',1)
+            if len(temprep)>1:
+                temp.append(temprep[1].rstrip())
+            else:
+                temp[-1]=temp[-1]+','+subentry.rstrip()
+        jsonout[i]=temp
+    for i in range(len(jsonout)):
+        temp=jsonout[i][0]
+        jsonout[i][0]=jsonout[i][-2]
+        jsonout[i][-2]=temp
+        temp=jsonout[i][6]
+        jsonout[i][6]=jsonout[i][-1]
+        jsonout[i][-1]=temp
+        temp=jsonout[i][2]
+        if(jsonout[i][-6]==''):
+            jsonout[i][-6]='-'
+        jsonout[i][2]=jsonout[i][-6]+'-'+jsonout[i][-3]+', '+jsonout[i][-4]
+        jsonout[i][-3]=temp
+else:
+    jsonout=post_req.text[8:-4]
+    jsonout=jsonout.split('},{')
+    for i in range(len(jsonout)):
+        jsonout[i]=re.sub('\\\\"','',jsonout[i])
+        jsonout[i]=re.sub('\\\\\\\\u0026','&',jsonout[i])
+        jsonout[i]=jsonout[i].split(',')
+        temp=[]
+        for subentry in jsonout[i]:
+            temprep=subentry.split(':',1)
+            if len(temprep)>1:
+                temp.append(temprep[1].rstrip())
+            else:
+                temp[-1]=temp[-1]+','+subentry.rstrip()
+        jsonout[i]=temp
+
 print(f"{bcolors.OKGREEN}RECIEVED{bcolors.ENDC}\n")
 headers2={
     'Host': 'psd.bits-pilani.ac.in',
@@ -199,7 +254,7 @@ headers2={
 print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Preference Filtering Started")
 pop_arr=[]
 for j in range(len(jsonout)):
-    if(jsonout[j][2][0:2] not in searchword):
+    if(len(searchword)>1 and jsonout[j][2][0:2] not in searchword):
         pop_arr.append(j)
 
 pop_arr.reverse()
@@ -207,7 +262,10 @@ for entry in pop_arr:
     jsonout.pop(entry)
 print(f"{bcolors.OKGREEN}Domain Filtered\n{bcolors.ENDC}")
 for j in range(len(jsonout)):
-    [Sdomain,StationName]=jsonout[j][2].split('-',1)
+    try:
+        [Sdomain,StationName]=jsonout[j][2].split('-',1)
+    except:
+        [Sdomain,StationName]=['-',jsonout[j][2]]
     print(f'{bcolors.INFOYELLOW}>{bcolors.ENDC}{Sdomain.rstrip()}-{StationName}')
 
 print(f"\n{bcolors.OKBLUE}>{bcolors.ENDC}Fetching Project list...\n")
@@ -217,7 +275,7 @@ for entry in jsonout:
     k=k+1
     print(f"\033[A{bcolors.OKBLUE}>{bcolors.ENDC}Fetching data {bcolors.OKBLUE}{round(k/len(jsonout)*100,2)}%{bcolors.ENDC} Done  ")
     payload3={
-        'StationId':f'{entry[3]}'
+        'StationId':f'{entry[-2]}'
     }
     post_req=ps.post(station_fetch+'/getPBPOPUP',headers=headers2,json=payload3)
     fetchlist.append(re.sub('\\\\"','',post_req.text[8:-4]))
@@ -294,7 +352,10 @@ print(f"{bcolors.OKGREEN}DONE{bcolors.ENDC}\n")
 
 print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Generating Project Sublist URLS")
 for i in range(len(jsonout)):
-    StationName=jsonout[i][2].split('-',1)[1]
+    try:
+        [Sdomain,StationName]=jsonout[i][2].split('-',1)
+    except:
+        [Sdomain,StationName]=['-',jsonout[i][2]]
     for j in range(len(fetchlist[i])):
         urlmask=f'http://psd.bits-pilani.ac.in/Student/StationproblemBankDetails.aspx?CompanyId={jsonout[i][-1]}&StationId={jsonout[i][-2]}&BatchIdFor={fetchlist[i][j][2]}&PSTypeFor={fetchlist[i][j][3]}'
         fetchlist[i][j].append(urlmask)
@@ -316,7 +377,9 @@ if(ignore_details):
     file_html.write('''<table>
     <tr>
     <th>Station</th>
+    <th>Domain</th>
     <th>Latest Problem Bank</th>
+    <th>Last updated on</th>
     <th>Eligibility</th>
     <th>Total Req. Interns</th>
     <th>Stripend</th>
@@ -325,14 +388,17 @@ if(ignore_details):
 print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Fetching Project Sublists and Generating Output HTML")
 print(f"\n{bcolors.OKGREEN}Recommended Projects{bcolors.ENDC}")
 for i in range(len(jsonout)):
-    [Sdomain,StationName]=jsonout[i][2].split('-',1)
+    try:
+        [Sdomain,StationName]=jsonout[i][2].split('-',1)
+    except:
+        [Sdomain,StationName]=['-',jsonout[j][2]]
     print(f'\n{bcolors.INFOYELLOW}Station{bcolors.ENDC}-{StationName}[{Sdomain.rstrip()}]')
     if(not ignore_details):
         file_html.write(f'''<div><h1 style="color:#e8e6e3;"><span style="color: fuchsia">{StationName}</span>[{Sdomain.rstrip()}]</h1>
         <ul>''')
     else:
         file_html.write(f'''<tr>
-        <td><span style="color:#ff72ff;">{StationName}</span>[{Sdomain.rstrip()}]</td>''')
+        <td><span style="color:#ff72ff;">{StationName}</span></td><td>{Sdomain.rstrip()}</td>''')
     for j in range(len(fetchlist[i])):
         uri=fetchlist[i][j][-1]
         headers3.update({'Referer': uri})
@@ -356,9 +422,11 @@ for i in range(len(jsonout)):
         outstring=''
         htmlstring=''
         totalinterns=0
+        last_updated=''
         for k in range(len(pbout)):
             valid=False
             totalinterns=totalinterns+int(pbout[k][1])
+            last_updated=pbout[k][-4]
             if(len(branchfilter)>1 and len(pbout[k][-3].strip())>1):
                 count=len([*re.finditer('any',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anya',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyb',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyc',pbout[k][-3],re.IGNORECASE)])
                 if(re.search(branchfilter,pbout[k][-3],re.IGNORECASE)):
@@ -384,6 +452,7 @@ for i in range(len(jsonout)):
             else:
                 set_color='blue'
             file_html.write(f'''<td><span style="color: {set_color}">{fetchlist[i][j][1]}</span></td>
+            <td>{last_updated}</td>
             <td>{fetchlist[i][j][-6]}</td>
             <td><span style="color: lime">{totalinterns}</span></td>
             <td><span style="color: #337dff">{fetchlist[i][j][-5]}</span></td>
