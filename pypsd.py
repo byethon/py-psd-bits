@@ -403,6 +403,7 @@ for i in range(len(jsonout)):
         for k in range(len(pbout)):
             valid=False
             totalinterns=totalinterns+int(pbout[k][1])
+            last_updated=pbout[k][-4]
             if(len(branchfilter)>1 and len(pbout[k][-3].strip())>1):
                 count=len([*re.finditer('any',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anya',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyb',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyc',pbout[k][-3],re.IGNORECASE)])
                 if(re.search(branchfilter,pbout[k][-3],re.IGNORECASE)):
