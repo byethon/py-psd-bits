@@ -191,7 +191,7 @@ if(post_req.status_code==404):
     print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Fallback to problem bank scraping....")
     print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Getting Station List....")
     payload_bak={'batchid': "undefined",
-                'token': str(token_gen)}
+                'token': str(token_gen())}
 
     headers.update({'Referer': station_fetch})
     post_req=ps.post(station_fetch+'/getPBdetail',headers=headers,json=payload_bak)
@@ -218,8 +218,6 @@ if(post_req.status_code==404):
         jsonout[i][6]=jsonout[i][-1]
         jsonout[i][-1]=temp
         temp=jsonout[i][2]
-        if(jsonout[i][-6]==''):
-            jsonout[i][-6]='-'
         jsonout[i][2]=jsonout[i][-6]+'-'+jsonout[i][-3]+', '+jsonout[i][-4]
         jsonout[i][-3]=temp
 else:
@@ -239,18 +237,7 @@ else:
         jsonout[i]=temp
 
 print(f"{bcolors.OKGREEN}RECIEVED{bcolors.ENDC}\n")
-headers2={
-    'Host': 'psd.bits-pilani.ac.in',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
-    'Accept': 'application/json, text/javascript, */*; q=0.01',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate',
-    'Content-Type': 'application/json; charset=utf-8',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Origin': 'http://psd.bits-pilani.ac.in',
-    'Connection': 'keep-alive',
-    'Referer': 'http://psd.bits-pilani.ac.in/Student/ViewActiveStationProblemBankData.aspx'
-}
+
 print(f"{bcolors.OKBLUE}>{bcolors.ENDC}Preference Filtering Started")
 pop_arr=[]
 for j in range(len(jsonout)):
@@ -269,6 +256,7 @@ for j in range(len(jsonout)):
     print(f'{bcolors.INFOYELLOW}>{bcolors.ENDC}{Sdomain.rstrip()}-{StationName}')
 
 print(f"\n{bcolors.OKBLUE}>{bcolors.ENDC}Fetching Project list...\n")
+headers.update({'Referer': station_fetch})
 fetchlist=[]
 k=0
 for entry in jsonout:
@@ -277,7 +265,7 @@ for entry in jsonout:
     payload3={
         'StationId':f'{entry[-2]}'
     }
-    post_req=ps.post(station_fetch+'/getPBPOPUP',headers=headers2,json=payload3)
+    post_req=ps.post(station_fetch+'/getPBPOPUP',headers=headers,json=payload3)
     fetchlist.append(re.sub('\\\\"','',post_req.text[8:-4]))
     fetchlist[-1]=fetchlist[-1].split('},{')
     for i in range(len(fetchlist[-1])):
@@ -362,17 +350,6 @@ for i in range(len(jsonout)):
 
 payload4={"batchid": "undefined"}
 
-headers3={
-    'Host': 'psd.bits-pilani.ac.in',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
-    'Accept': 'application/json, text/javascript, */*; q=0.01',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate',
-    'Content-Type': 'application/json; charset=utf-8',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Origin': 'http://psd.bits-pilani.ac.in',
-    'Connection': 'keep-alive',
-}
 if(ignore_details):
     file_html.write('''<table>
     <tr>
@@ -401,10 +378,10 @@ for i in range(len(jsonout)):
         <td><span style="color:#ff72ff;">{StationName}</span></td><td>{Sdomain.rstrip()}</td>''')
     for j in range(len(fetchlist[i])):
         uri=fetchlist[i][j][-1]
-        headers3.update({'Referer': uri})
+        headers.update({'Referer': uri})
         post_req=ps.get(uri)
         print("Loading Project Sub-list...")
-        post_req=ps.post(pb_details+'/ViewPB',headers=headers3,json=payload4)
+        post_req=ps.post(pb_details+'/ViewPB',headers=headers,json=payload4)
         pbout=post_req.text[8:-3]
         pbout=pbout.split('},{')
         for k in range(len(pbout)):
@@ -426,7 +403,6 @@ for i in range(len(jsonout)):
         for k in range(len(pbout)):
             valid=False
             totalinterns=totalinterns+int(pbout[k][1])
-            last_updated=pbout[k][-4]
             if(len(branchfilter)>1 and len(pbout[k][-3].strip())>1):
                 count=len([*re.finditer('any',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anya',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyb',pbout[k][-3],re.IGNORECASE)])-len([*re.finditer('anyc',pbout[k][-3],re.IGNORECASE)])
                 if(re.search(branchfilter,pbout[k][-3],re.IGNORECASE)):
